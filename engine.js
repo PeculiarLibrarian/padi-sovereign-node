@@ -1,7 +1,7 @@
 import fs from 'fs';
 import Ajv from 'ajv';
 import { Parser, Store, DataFactory } from 'n3';
-import { hash, canonicalize, verifySignature, normalize } from './lib.js';
+import { hash, canonicalize, verifySignature } from './lib.js';
 
 const { namedNode } = DataFactory;
 const PREFIX = { sh: "http://www.w3.org/ns/shacl#", padi: "http://padi.tech/schema#" };
@@ -14,7 +14,7 @@ export class PadiEngine {
         this.tips = [];
         this.lastTimestamp = 0;
         this.nonces = new Set();
-        this.revokedKeys = new Set();
+        this.nodeRegistry = new Map(); // Indexed from Ledger
     }
 
     async bootstrap() {
@@ -22,18 +22,8 @@ export class PadiEngine {
         const parser = new Parser();
         this.store.addQuads(parser.parse(fs.readFileSync('./padi.ttl', 'utf8')));
 
-        // Identity & Revocation Discovery
-        const keyQuads = this.store.getQuads(null, namedNode(`${PREFIX.padi}authorizedPublicKey`), null, null);
-        this.publicKeys = keyQuads.map(q => {
-            const key = q.object.value;
-            const isRevoked = this.store.getQuads(q.subject, namedNode(`${PREFIX.padi}isRevoked`), null, null)[0]?.object.value === "true";
-            if (isRevoked) this.revokedKeys.add(key);
-            return key;
-        }).filter(k => k.includes("PUBLIC KEY") && !this.revokedKeys.has(k));
+        if (!fs.existsSync(LEDGER_PATH)) throw new Error("LEDGER_MISSING: Run setup.js");
 
-        if (!fs.existsSync(LEDGER_PATH)) throw new Error("LEDGER_MISSING");
-
-        // BOOTSTRAP AUDIT (O(n) at startup is acceptable)
         const lines = fs.readFileSync(LEDGER_PATH, 'utf8').split('\n').filter(Boolean);
         let lastHash = null;
 
@@ -48,51 +38,72 @@ export class PadiEngine {
                 if (block.t < this.lastTimestamp) throw new Error(`TIME_ERR: ${i}`);
             }
             
-            this.nonces.add(block.d.nonce);
+            // Corrected Nonce Extraction
+            if (block.d?.nonce) this.nonces.add(block.d.nonce);
+            
+            // Indexing Node Declarations from Ledger
+            if (block.d?.context === "NodeShape") {
+                this.nodeRegistry.set(block.d.nodeId, block.d);
+            }
+
             lastHash = block.hash;
             this.lastTimestamp = block.t;
         }
         this.tips = [lastHash];
-        console.log(`⚓ v1.7.0 Online. Tip: ${this.tips[0].slice(0,8)}`);
+        console.log(`⚓ v1.8.0 Online. Tip: ${this.tips[0].slice(0,8)} | Nodes: ${this.nodeRegistry.size}`);
+    }
+
+    /**
+     * Runtime Discovery of Active (Non-Revoked) Keys
+     */
+    getActiveKeys() {
+        return this.store.getQuads(null, namedNode(`${PREFIX.padi}authorizedPublicKey`), null, null)
+            .filter(q => {
+                const revoked = this.store.getQuads(q.subject, namedNode(`${PREFIX.padi}isRevoked`), null, null)[0]?.object.value === "true";
+                return !revoked;
+            })
+            .map(q => q.object.value);
     }
 
     async ingest(payload, signature) {
         const now = Date.now();
-        // Monotonic Time Invariant
         if (payload.timestamp < this.lastTimestamp) throw new Error("TIME_RETROGRESSION");
         if (Math.abs(now - payload.timestamp) > 60000) throw new Error("CLOCK_DRIFT");
-        
-        // Nonce Persistence Check
         if (this.nonces.has(payload.nonce)) throw new Error("REPLAY_ATTACK");
 
-        // Identity & Revocation Check
-        if (!verifySignature(canonicalize(payload), signature, this.publicKeys)) throw new Error("AUTH_ERR");
+        // Reactive Revocation Check
+        const activeKeys = this.getActiveKeys();
+        if (!verifySignature(canonicalize(payload), signature, activeKeys)) throw new Error("AUTH_ERR");
 
-        // Syntactic Gate
         if (!this.validator(payload)) throw new Error("SCHEMA_ERR");
 
-        // Semantic Gate (SHACL)
+        // SHACL Semantic Gate
         this._validateSHACL(payload);
 
         // DAG Commit
         const block = { t: now, p: this.tips, d: payload, s: signature };
         block.hash = hash(canonicalize(block));
         
-        // O(1) DURABLE APPEND
+        // O(1) Atomic Append
         const fd = fs.openSync(LEDGER_PATH, 'a');
         fs.writeSync(fd, JSON.stringify(block) + '\n');
         fs.fsyncSync(fd);
         fs.closeSync(fd);
 
+        // Update Runtime State
         this.nonces.add(payload.nonce);
+        if (payload.context === "NodeShape") this.nodeRegistry.set(payload.nodeId, payload);
         this.lastTimestamp = block.t;
         this.tips = [block.hash];
+
         return block;
     }
 
     _validateSHACL(payload) {
         const shape = namedNode(`${PREFIX.padi}${payload.context || "StructuralShape"}`);
         const propertyQuads = this.store.getQuads(shape, namedNode(`${PREFIX.sh}property`), null, null);
+        if (propertyQuads.length === 0) throw new Error("UNKNOWN_CONTEXT");
+
         for (const pq of propertyQuads) {
             const path = this.store.getQuads(pq.object, namedNode(`${PREFIX.sh}path`), null, null)[0]?.object.value.split(/[#\/]/).pop();
             const val = payload[path];
