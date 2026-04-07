@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "required": ["gridScore", "invisibilityCoefficient", "verifiedBy", "timestamp", "nonce", "v"],
+  "required": ["timestamp", "nonce", "v", "verifiedBy"],
   "additionalProperties": false,
   "properties": {
     "gridScore": { "type": "integer" },
@@ -8,7 +8,10 @@
     "verifiedBy": { "type": "string" },
     "timestamp": { "type": "integer" },
     "nonce": { "type": "string", "minLength": 8 },
-    "v": { "type": "string", "const": "1.6.2" },
-    "context": { "type": "string" }
+    "v": { "type": "string", "const": "1.8.0" },
+    "context": { "type": "string" },
+    "nodeId": { "type": "string" },
+    "publicKey": { "type": "string" },
+    "capabilities": { "type": "array", "items": { "type": "string" } }
   }
 }
