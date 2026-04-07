@@ -1,0 +1,21 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix : <http://padi.tech/schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+:StructuralShape a sh:NodeShape ;
+    sh:property [ 
+        sh:path :gridScore ; 
+        sh:maxInclusive 1003 ;
+        sh:minInclusive 0 ;
+        sh:minCount 1 ;
+        sh:datatype xsd:integer 
+    ] ;
+    sh:property [ 
+        sh:path :invisibilityCoefficient ; 
+        sh:maxInclusive 1 ;
+        sh:minCount 1 
+    ] .
+
+:SamuelNode 
+    :name "Samuel Muriithi Gitandu" ;
+    :authorizedPublicKey "---PASTE_YOUR_PUBLIC_KEY_HERE---" .
