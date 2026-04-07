@@ -11,7 +11,7 @@ export class PadiEngine {
     constructor() {
         this.ajv = new Ajv({ allErrors: true, strict: true });
         this.store = new Store();
-        this.tips = ["GENESIS"];
+        this.tips = [];
         this.nonces = new Set();
     }
 
@@ -23,21 +23,27 @@ export class PadiEngine {
         const keyQuads = this.store.getQuads(null, namedNode(`${PREFIX.padi}authorizedPublicKey`), null, null);
         this.publicKeys = keyQuads.map(q => q.object.value).filter(k => k.includes("PUBLIC KEY"));
         
-        if (!this.publicKeys.length) throw new Error("BOOTSTRAP_ERR: Identity missing.");
+        if (!fs.existsSync(LEDGER_PATH)) throw new Error("LEDGER_MISSING: Run setup.js first.");
 
-        if (fs.existsSync(LEDGER_PATH)) {
-            const lines = fs.readFileSync(LEDGER_PATH, 'utf8').split('\n').filter(Boolean);
-            let lastHash = "GENESIS";
-            for (const line of lines) {
-                const block = JSON.parse(line);
-                if (hash(canonicalize(block)) !== block.hash) throw new Error("INTEGRITY_BREACH");
-                if (!Array.isArray(block.p) || !block.p.includes(lastHash)) throw new Error("CHAIN_BREACH");
-                this.nonces.add(block.d.nonce);
-                lastHash = block.hash;
+        // FULL BOOTSTRAP AUDIT
+        const lines = fs.readFileSync(LEDGER_PATH, 'utf8').split('\n').filter(Boolean);
+        let lastHash = null;
+
+        for (const [i, line] of lines.entries()) {
+            const block = JSON.parse(line);
+            // 1. Hash Integrity
+            if (hash(canonicalize(block)) !== block.hash) throw new Error(`INTEGRITY_BREACH: Block ${i}`);
+            // 2. Continuity
+            if (i === 0) {
+                if (block.p.length !== 0) throw new Error("GENESIS_LINK_ERR");
+            } else {
+                if (!block.p.includes(lastHash)) throw new Error(`CHAIN_BREACH: Block ${i}`);
             }
-            this.tips = [lastHash];
+            if (block.d.nonce) this.nonces.add(block.d.nonce);
+            lastHash = block.hash;
         }
-        console.log(`⚓ Bureau v1.6.2: Grounded. Tip: ${this.tips[0].slice(0,8)}`);
+        this.tips = [lastHash];
+        console.log(`⚓ Bureau v1.6.3 Operational. Tip: ${this.tips[0].slice(0,8)}`);
     }
 
     async ingest(payload, signature) {
@@ -47,35 +53,29 @@ export class PadiEngine {
         if (!verifySignature(canonicalize(payload), signature, this.publicKeys)) throw new Error("AUTH_ERR");
         if (!this.validator(payload)) throw new Error("SCHEMA_ERR");
 
+        // SHACL Semantic Gate (Iterative)
         const shape = namedNode(`${PREFIX.padi}${payload.context || "StructuralShape"}`);
         const propertyQuads = this.store.getQuads(shape, namedNode(`${PREFIX.sh}property`), null, null);
-        
         for (const pq of propertyQuads) {
-            const paths = this.store.getQuads(pq.object, namedNode(`${PREFIX.sh}path`), null, null);
-            if (paths.length !== 1) throw new Error("SHACL_PATH_ERR");
-            
-            const field = paths[0].object.value.split(/[#\/]/).pop();
-            const val = payload[field];
-
-            // Enforce sh:minCount
-            const minCount = this.store.getQuads(pq.object, namedNode(`${PREFIX.sh}minCount`), null, null)[0];
-            if (minCount?.object.value === "1" && (val === undefined || val === null)) {
-                throw new Error(`CARDINALITY_ERR: ${field} required`);
-            }
-
+            const path = this.store.getQuads(pq.object, namedNode(`${PREFIX.sh}path`), null, null)[0]?.object.value.split(/[#\/]/).pop();
+            const val = payload[path];
             const maxQ = this.store.getQuads(pq.object, namedNode(`${PREFIX.sh}maxInclusive`), null, null)[0];
-            if (maxQ && val > Number(maxQ.object.value)) throw new Error(`MAX_ERR: ${field}`);
+            if (maxQ && val > Number(maxQ.object.value)) throw new Error(`MAX_ERR: ${path}`);
         }
 
         const block = { t: now, p: this.tips, d: payload, s: signature };
         block.hash = hash(canonicalize(block));
         
+        // ATOMIC APPEND-ONLY SWAP
         const tmp = `${LEDGER_PATH}.tmp`;
-        fs.writeFileSync(tmp, JSON.stringify(block) + '\n');
+        const currentContent = fs.readFileSync(LEDGER_PATH);
+        const newContent = Buffer.concat([currentContent, Buffer.from(JSON.stringify(block) + '\n')]);
+
+        fs.writeFileSync(tmp, newContent);
         const fd = fs.openSync(tmp, 'r');
         fs.fsyncSync(fd);
         fs.closeSync(fd);
-        fs.renameSync(tmp, LEDGER_PATH);
+        fs.renameSync(tmp, LEDGER_PATH); // Atomic Replace
 
         // Directory Fsync
         const dirFd = fs.openSync('.', 'r');
