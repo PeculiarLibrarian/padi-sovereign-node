@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-const HASH_DOMAIN = "PADI_LEDGER_V1.6.2";
+const HASH_DOMAIN = "PADI_LEDGER_V1.7.0";
 
 export function canonicalize(obj) {
     if (obj === undefined) throw new Error("CANON_ERR: Undefined prohibited");
