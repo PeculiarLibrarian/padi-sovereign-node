@@ -1,6 +1,31 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-// ONLY IMPORT FROM LIB.JS
+import fs from 'fs';
 import { canonicalize, hash } from './lib.js';
 
-// ... (Rest of setup logic to generate keys and the Genesis block)
+// 1. Generate Sovereign Keypair
+const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+});
+
+fs.writeFileSync('padi_private.pem', privateKey);
+fs.writeFileSync('padi_public.pem', publicKey);
+
+// 2. Materialize Genesis Block (Block 0)
+const genesisBlock = {
+    t: 1710000000000, // Fixed historical anchor
+    p: [],
+    d: { system: "PADI_GENESIS", v: "1.8.1", note: "The Bureau is Open." },
+    s: "SOVEREIGN_ROOT"
+};
+
+genesisBlock.hash = hash(canonicalize(genesisBlock));
+
+// 3. Initialize Ledger
+fs.writeFileSync('ledger.log', JSON.stringify(genesisBlock) + '\n');
+
+console.log("\n--- BUREAU INITIALIZED (v1.8.1) ---");
+console.log("1. Private Key: padi_private.pem (KEEP SECRET)");
+console.log("2. Genesis Hash:", genesisBlock.hash);
+console.log("3. Copy Public Key below into 'padi.ttl':\n");
+console.log(publicKey);
