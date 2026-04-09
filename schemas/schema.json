@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "required": ["timestamp", "nonce", "v", "verifiedBy", "epoch"],
+  "additionalProperties": false,
+  "properties": {
+    "gridScore": { "type": "integer" },
+    "invisibilityCoefficient": { "type": "number" },
+    "verifiedBy": { "type": "string" },
+    "timestamp": { "type": "integer" },
+    "nonce": { "type": "string", "minLength": 8 },
+    "epoch": { "type": "integer" },
+    "v": { "type": "string" },
+    "context": { "type": "string" }
+  }
+}
