@@ -1,25 +1,38 @@
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import { PadiEngine } from './engine.js';
 
 const app = express();
-app.use(rateLimit({ windowMs: 60000, max: 100 }));
 app.use(express.json({ limit: '1mb' }));
 
 const engine = new PadiEngine();
 await engine.bootstrap();
 
-app.post('/api/ingest', async (req, res) => {
-    if (!req.is('application/json')) return res.status(415).json({ status: "REJECTED", code: "JSON_ONLY" });
-    const sig = req.headers['x-padi-signature'];
-    if (!sig || !/^[A-Za-z0-9+/=]+$/.test(sig)) return res.status(401).json({ status: "REJECTED", code: "AUTH_REQUIRED" });
-
-    try {
-        const block = await engine.ingest(req.body, sig);
-        res.json({ status: "COMMITTED", hash: block.hash });
-    } catch (err) {
-        res.status(422).json({ status: "REJECTED", code: err.message });
-    }
+const server = app.listen(3000, () => {
+    engine.log("INFO", "SERVER_STARTED", { port: 3000 });
 });
 
-app.listen(3000, () => console.log('⚓ PADI v1.6.2 Operational'));
+// --- GRACEFUL SHUTDOWN HANDLER ---
+const shutdown = async (signal) => {
+    engine.log("INFO", "SHUTDOWN_SIGNAL", { signal });
+    
+    server.close(() => {
+        engine.log("INFO", "SERVER_CLOSED");
+        // Ensure Tip is stable and temp files are cleared
+        if (fs.existsSync('./ledger.log.tmp')) {
+            fs.unlinkSync('./ledger.log.tmp');
+            engine.log("WARN", "STALE_TMP_CLEARED");
+        }
+        process.exit(0);
+    });
+
+    // Force exit if server.close hangs
+    setTimeout(() => {
+        engine.log("ERROR", "SHUTDOWN_TIMEOUT");
+        process.exit(1);
+    }, 5000);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// ... (Existing Routes)
