@@ -5,22 +5,18 @@ const HASH_DOMAIN = "PADI_SOVEREIGN_V1.8.1";
 
 /**
  * DETERMINISTIC CANONICALIZATION (Recursive)
- * Ensures that the same object always results in the exact same string, 
- * regardless of key order or platform.
  */
 export function canonicalize(obj) {
     if (obj === undefined) throw new Error("CANON_ERR: Undefined values prohibited");
     if (obj === null) return 'null';
     if (typeof obj === 'number') {
         if (!Number.isFinite(obj)) throw new Error("NON_FINITE_NUMBER");
-        // Lock precision to 6 decimals to prevent IEEE-754 drift across systems
         return Number.isInteger(obj) ? obj.toString() : obj.toFixed(6);
     }
     if (typeof obj === 'string') return JSON.stringify(obj.normalize('NFC'));
     if (Array.isArray(obj)) return '[' + obj.map(canonicalize).join(',') + ']';
     if (typeof obj !== 'object') return JSON.stringify(obj);
     
-    // Sort keys and exclude volatile signatures/hashes during the signing process
     const keys = Object.keys(obj).filter(k => k !== 'signature' && k !== 'hash').sort();
     const entries = keys.map(k => `"${k}":${canonicalize(obj[k])}`);
     return `{${entries.join(',')}}`;
