@@ -12,15 +12,17 @@ export class ClusterManager {
 
     async start() {
         await this.poll();
-        setInterval(() => this.poll(), 2000);
+        setInterval(() => this.poll(), 1500); 
     }
 
     async poll() {
+        // Role Hard-Lock
+        if (process.env.LEADER_ELIGIBLE !== "true") { this.engine.isLeader = false; return; }
+        
         try {
             const acquired = await this.redis.set(this.leaderKey, this.nodeId, "PX", 5000, "NX");
             if (acquired === "OK") {
-                const newEpoch = await this.redis.incr(this.epochKey);
-                this.engine.currentEpoch = newEpoch;
+                this.engine.currentEpoch = await this.redis.incr(this.epochKey);
                 this.engine.isLeader = true;
             } else {
                 const leader = await this.redis.get(this.leaderKey);
@@ -30,14 +32,15 @@ export class ClusterManager {
                 } else {
                     this.engine.isLeader = false;
                     const epoch = await this.redis.get(this.epochKey);
-                    this.engine.currentEpoch = parseInt(epoch || "0", 10);
+                    // Invariant: Epoch Monotonicity
+                    const nextEpoch = parseInt(epoch || "0", 10);
+                    this.engine.currentEpoch = Math.max(this.engine.currentEpoch, nextEpoch);
                 }
             }
         } catch (e) { this.engine.isLeader = false; }
     }
 
     async release() {
-        const leader = await this.redis.get(this.leaderKey);
-        if (leader === this.nodeId) await this.redis.del(this.leaderKey);
+        if ((await this.redis.get(this.leaderKey)) === this.nodeId) await this.redis.del(this.leaderKey);
     }
 }
