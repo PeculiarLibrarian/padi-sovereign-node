@@ -1,112 +1,321 @@
-# PADI Sovereign Node v1.9.6 ⚓
-### The Distributed Nairobi Bureau: Institutional Grade Semantic Ledger
+# ⚓ PADI Sovereign Node v1.9.7c
 
-PADI (Peculiar Archive for Distributed Integrity) is a single-process, multi-capability sovereign engine. It combines deterministic DAG-based ledger storage, queryable graph semantics, and cryptographically-authorized state transitions with distributed consensus.
+**Deterministic. Verifiable. Single-writer secure.**
 
-This node is a **Fenced Replicated State Machine** designed to act as a "Source of Truth" anchor for autonomous agents and decentralized archives.
+PADI Sovereign Node is a **cryptographically verifiable, append-only ledger system** with **strict leader control**, **epoch-based safety**, and **deterministic state transitions**.
 
----
-
-## 🏛️ Architectural Pillars
-
-1. **Global Determinism:** Recursive canonicalization ensures identical hashes and state across all nodes.
-2. **Cryptographic Authority:** Ed25519 signatures protect the intake; identity is grounded in RDF/TTL ontologies.
-3. **Leader Fencing:** Multi-node coordination via Redis-backed epochs prevents split-brain writes.
-4. **Semantic Integrity:** Dual-gate validation (AJV Syntactic + SHACL Semantic) ensures data is logically sound.
-5. **Durable Persistence:** POSIX-level atomicity (atomic appends + file/directory fsync) ensures crash-safe history.
-6. **Byzantine Resilience:** Recursive ancestry validation prevents malicious peers from poisoning the chain.
+This system is designed for **production-grade integrity**, not experimentation.
 
 ---
 
-## 📂 Repository Structure
+# 🧠 Core Principles
 
-```text
-padi-sovereign-node/
-├── api/            # HTTP Entry Gate & Route Handlers
-├── cluster/        # Leader Election & Byzantine Replication logic
-├── core/           # Deterministic Engine & Logic Anchor (lib.js)
-├── data/           # Persistent DAG Ledger & Snapshots
-├── schemas/        # Syntactic (JSON) and Semantic (SHACL) Truth
-├── scripts/        # Setup & Maintenance Tooling
-├── Dockerfile      # Containerized Deployment Spec
-└── package.json    # Manifest & Production Dependencies
+- **Determinism First** — identical inputs always yield identical state
+- **Single Writer** — enforced via Redis-backed leader election
+- **Tamper Evidence** — full-chain hashing + canonicalization
+- **Strict Validation** — JSON Schema + SHACL constraints
+- **Crash Consistency** — POSIX `fsync` durability
+- **Replay Immunity** — nonce enforcement across canonical chain
+- **Epoch Safety** — prevents state regression under failure
+
+---
+
+# 🏗️ Architecture Overview
+
+```
+
+```
+            ┌──────────────┐
+            │  Public Node │  ← LEADER_ELIGIBLE=true
+            │  (Ingress)   │
+            └──────┬───────┘
+                   │
+    ┌──────────────┼──────────────┐
+    │              │              │
+```
+
+┌────────────┐ ┌────────────┐ ┌────────────┐
+│ Private    │ │ Private    │ │ Private    │
+│ Node       │ │ Node       │ │ Node       │
+│ READ_ONLY  │ │ READ_ONLY  │ │ READ_ONLY  │
+└────────────┘ └────────────┘ └────────────┘
+
 ```
 
 ---
 
-## 🚀 Quick Start (The Setup Ceremony)
+# 🔐 Security Model
 
-### 1. Prerequisites
-- **Node.js:** v18.x or higher (for native fetch support)
-- **Redis:** Required for Cluster Leadership coordination
+## Enforced Guarantees
 
-### 2. Installation
+- **Authenticated Writes**
+  - Ed25519 signature verification
+  - Public keys anchored in RDF graph
+
+- **Replay Protection**
+  - Nonce tracking across canonical ledger
+
+- **Leader Exclusivity**
+  - Redis lease (`NX PX`)
+  - Epoch fencing
+
+- **State Integrity**
+  - Canonical JSON hashing
+  - Full ledger verification on boot
+
+- **Schema Enforcement**
+  - AJV (strict mode)
+  - SHACL constraints
+
+- **Epoch Monotonicity**
+  - Prevents rollback even if Redis resets
+
+---
+
+## Explicit Non-Goals
+
+- Byzantine fault tolerance
+- Anonymous / trustless operation
+- DoS resistance at network edge
+- Key compromise protection
+
+---
+
+# 📦 Project Structure
+
+```
+
+.
+├── api/
+│   └── server.js          # HTTP interface
+├── core/
+│   ├── engine.js          # Ledger + validation engine
+│   └── lib.js             # Canonicalization + crypto
+├── cluster/
+│   ├── cluster.js         # Leader election (Redis)
+│   └── replicator.js      # Peer synchronization
+├── schemas/
+│   ├── schema.json        # JSON schema
+│   └── padi.ttl           # SHACL + key registry
+├── scripts/
+│   └── setup.js           # Keygen + genesis
+├── data/                  # Ledger + snapshots (runtime)
+├── Dockerfile
+├── package.json
+└── .gitignore
+
+````
+
+---
+
+# 🚀 Setup
+
+## 1. Install Dependencies
+
 ```bash
 npm install
+````
+
+## 2. Initialize System
+
+```bash
+npm run setup
 ```
 
-### 3. Initialize Sovereignty
-Generate your Ed25519 keypair and materialize the deterministic Genesis Block:
-```bash
-node scripts/setup.js
-```
-*   **Result:** `padi_private.pem` (Secret Key) and `data/ledger.log` (initialized at Block 0).
-*   **Note:** Copy the printed **Public Key PEM** and paste it into `schemas/padi.ttl` under `:authorizedPublicKey`.
+This generates:
 
-### 4. Launch the Bureau
+* `padi_private.pem`
+* `padi_public.pem`
+* `data/ledger.log` (genesis block)
+
+---
+
+## 3. Configure Environment
+
 ```bash
-# Set your Node ID, Redis connection, and Peer list
-export NODE_ID=nairobi-bureau-01
 export REDIS_URL=redis://localhost:6379
-export PEERS='["http://localhost:3001"]'
+export NODE_ID=node-1
+export LEADER_ELIGIBLE=true
+export READ_ONLY=false
+export PEERS='["http://node-2:3000","http://node-3:3000"]'
+```
 
+---
+
+## 4. Start Node
+
+```bash
 npm start
 ```
 
 ---
 
-## 📡 API Specification
+# 🌐 API Reference
 
-| Endpoint | Method | Description |
-| :--- | :--- | :--- |
-| `/api/ingest` | `POST` | Ingest signed data. Requires `x-padi-signature` header. |
-| `/health` | `GET` | Returns Liveness, Leader Status, Height, and Tip Hash. |
-| `/ledger/tip` | `GET` | Returns the current canonical Tip and Height. |
-| `/ledger/block/:hash` | `GET` | Returns a specific block from the index. |
-| `/ledger/since/:hash` | `GET` | Returns the canonical path since a specific hash. |
+## Health
+
+```
+GET /health
+```
+
+**Response**
+
+```json
+{
+  "status": "OK",
+  "leader": true,
+  "h": 42,
+  "tip": "abc123..."
+}
+```
 
 ---
 
-## 🛡️ Security Invariants
+## Submit Payload
 
-- **Invariant of Monotonicity:** History cannot flow backward. Timestamps and heights strictly advance.
-- **Invariant of Canonical Domain:** All hashes are domain-separated (`PADI_SOVEREIGN_V1.9.6`) to prevent collision.
-- **Invariant of State Reconstruction:** The in-memory state (Nonces, Indices) is re-derived solely from the immutable ledger on boot.
-- **Invariant of Fencing:** Leader writes are rejected if the cluster epoch has advanced beyond the write context.
+```
+POST /api/ingest
+Headers:
+  x-padi-signature: <base64>
+```
+
+**Body**
+
+```json
+{
+  "timestamp": 1700000000000,
+  "nonce": "unique-value",
+  "verifiedBy": "node",
+  "epoch": 5,
+  "v": "1.9.7",
+  "context": "StructuralShape",
+  "gridScore": 100,
+  "invisibilityCoefficient": 0.5
+}
+```
 
 ---
 
-## 🐳 Docker Deployment
+## Get Tip
+
+```
+GET /ledger/tip
+```
+
+---
+
+## Get Block
+
+```
+GET /ledger/block/:hash
+```
+
+---
+
+## Stream From Hash
+
+```
+GET /ledger/since/:hash
+```
+
+---
+
+# ⚙️ Deployment Model
+
+## Node Roles
+
+| Role             | Config                         | Capability        |
+| ---------------- | ------------------------------ | ----------------- |
+| Leader Candidate | `LEADER_ELIGIBLE=true`         | Can become leader |
+| Ingress Node     | `LEADER_ELIGIBLE=true`, public | Accepts writes    |
+| Replica Node     | `READ_ONLY=true`               | Sync only         |
+
+---
+
+## Recommended Topology
+
+* **1 Public Leader Node**
+* **N Private Replica Nodes**
+* **Shared Redis Instance**
+
+---
+
+# 🔁 Replication
+
+* Pull-based synchronization
+
+* Canonical chain selection:
+
+  * Highest height wins
+  * Tie-break: lowest hash
+
+* Backfill limit: **500 blocks per sync**
+
+---
+
+# 💾 Persistence Model
+
+* Append-only log: `data/ledger.log`
+* Snapshot every **1000 blocks**
+* Full `fsync` on every write
+
+---
+
+# ⚠️ Operational Constraints
+
+* Redis must be **highly available**
+* System clock drift must be **<5 seconds**
+* Keys must be **securely stored**
+* Disk must support **fsync guarantees**
+
+---
+
+# 🔍 Failure Behavior
+
+| Failure         | Outcome                                    |
+| --------------- | ------------------------------------------ |
+| Node crash      | Safe recovery via ledger replay            |
+| Redis reset     | Epoch monotonicity prevents rollback       |
+| Leader loss     | New leader elected                         |
+| Network split   | Temporary divergence, eventual convergence |
+| Invalid payload | Rejected deterministically                 |
+
+---
+
+# 🧪 Invariants
+
+The system enforces:
+
+* No duplicate nonce in canonical chain
+* No block with invalid hash
+* No unsigned payload accepted
+* No epoch regression
+* No multi-parent chain (strict linearity)
+
+---
+
+# 🐳 Docker
+
 ```bash
 docker build -t padi-node .
-docker run -v $(pwd)/data:/app/data -e REDIS_URL=redis://host.docker.internal:6379 -p 3000:3000 padi-node
+docker run -p 3000:3000 \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  -e NODE_ID=node-1 \
+  -e LEADER_ELIGIBLE=true \
+  padi-node
 ```
 
 ---
 
-## ⚓ The Sovereign Architect
-**Samuel Muriithi Gitandu**  
-*The Nairobi Bureau | Living Library of Access*
+# 🏁 Final Statement
 
-**Status:** v1.9.6 - Bureau Locked - Institutional Grade.
+PADI Sovereign Node v1.9.7c is:
+
+> A **deterministic, leader-based, cryptographically verifiable ledger system** with **strict validation and bounded failure modes**.
+
+It is **production-ready**, **operationally stable**, and **architecturally complete**.
+
+No further structural changes are required.
+
 ```
 ```
-
----
-
-### 🏁 Final Project Status
-- **Architecture:** 100% Finalized.
-- **Code Logic:** 100% Hardened.
-- **Invariants:** 100% Deterministic.
-
-**The Bureau is complete.**⚓
