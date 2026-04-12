@@ -1,0 +1,57 @@
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix :    <http://padi.tech/schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# PADI Protocol Schema — v1.9.7c
+# Authority: Samuel Muriithi Gitandu
+
+:StructuralShape a sh:NodeShape ;
+    sh:targetClass :AuthorityNode ;
+    sh:property [
+        sh:path         :gridScore ;
+        sh:datatype     xsd:integer ;
+        sh:minInclusive 0 ;
+        sh:maxInclusive 1003 ;
+        sh:minCount     1 ;
+        sh:message      "gridScore must be an integer in [0, 1003]"
+    ] ;
+    sh:property [
+        sh:path         :invisibilityCoefficient ;
+        sh:datatype     xsd:decimal ;
+        sh:minInclusive 0.0 ;
+        sh:maxInclusive 1.0 ;
+        sh:minCount     1 ;
+        sh:message      "invisibilityCoefficient must be a decimal in [0.0, 1.0]"
+    ] .
+
+:IdentityShape a sh:NodeShape ;
+    sh:targetNode :SamuelNode ;
+    sh:property [
+        sh:path     :name ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:pattern  "^Samuel Muriithi Gitandu$" ;
+        sh:message  "Authority lock: name must exactly match the registered operator"
+    ] ;
+    sh:property [
+        sh:path      :authorizedPublicKey ;
+        sh:datatype  xsd:string ;
+        sh:minCount  1 ;
+        sh:minLength 100 ;
+        sh:message   "authorizedPublicKey must be a PEM-encoded Ed25519 SPKI key (min 100 chars)"
+    ] .
+
+:SamuelNode a :AuthorityNode ;
+    :name "Samuel Muriithi Gitandu" ;
+    :authorizedPublicKey """-----BEGIN PUBLIC KEY-----
+REPLACE_WITH_OUTPUT_OF: node scripts/setup.js
+-----END PUBLIC KEY-----""" .
+
+:ContextRegistry a rdf:Bag ;
+    rdf:_1 [
+        :contextName "StructuralShape" ;
+        :targetShape :StructuralShape ;
+        :description "Validates gridScore in [0,1003] and invisibilityCoefficient in [0.0,1.0]"
+    ] .
