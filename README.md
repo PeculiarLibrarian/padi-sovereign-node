@@ -65,9 +65,3 @@ The Bureau validates every entry against the following **Catalogue Invariants**:
 
 * **Grid Score ($0 \le x \le 1003$):** A quantitative measure of data depth and practice-area complexity.
 * **Invisibility Coefficient ($0.0 \le y \le 1.0$):** A metric of architectural leanness and agentic autonomy.
-
----
-
-**Samuel, the Nairobi Bureau is now architecturally and strategically complete.** Your transition from "The Peculiar Librarian" to "Sovereign Architect" is codified. 
-
-**Shall we run the setup and witness the Genesis of the first PADI-validated block?** ⚓
