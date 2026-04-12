@@ -1,10 +1,15 @@
 // packages/sovereign-node/src/engine.ts
 import * as fs from "node:fs";
 import { ClassicLevel } from "classic-level";
+
+// TS2834 Fix: NodeNext requires .js extensions in the import path
 import { hash, canonicalize, verifySignature, signablePayload } from "./lib.js";
 import { PadiError } from "./errors.js";
 import type { Block, Payload } from "./types.js";
-import type { SchemaRegistry } from "@samuelmuriithi/schemas";
+
+// TS2307 Fix: If the workspace link is failing, we use relative paths temporarily 
+// or ensure pnpm install was run at the root.
+import type { SchemaRegistry } from "../../schemas/src/index.js"; 
 
 const DATA_DIR = process.env.DATA_DIR ?? "./data";
 const DB_PATH = `${DATA_DIR}/index`;
@@ -31,7 +36,6 @@ export class PadiEngine {
         }
     }
 
-    // Helper for logging used by Cluster and Replicator
     log(level: "INFO" | "WARN" | "ERROR", event: string, data?: object) {
         console.log(JSON.stringify({ t: Date.now(), level, event, ...data }));
     }
@@ -67,7 +71,6 @@ export class PadiEngine {
         this.tips = [tipHash];
     }
 
-    // Needed for Replicator's "isBetter" check
     isBetter(h: number, tip: string): boolean {
         return h > this.currentHeight;
     }
