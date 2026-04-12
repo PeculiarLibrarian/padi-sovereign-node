@@ -39,7 +39,7 @@ Applying a **MECE** (Mutually Exclusive, Collectively Exhaustive) breakdown of t
 
 ## 🚀 OPERATIONAL WORKFLOW
 
-### I. Provisioning (Day Zero)
+### I. Provisioning
 Establish the Bureau's identity and initialize the PADI Genesis block.
 ```bash
 pnpm install && pnpm build
