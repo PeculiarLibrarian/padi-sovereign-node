@@ -1,13 +1,12 @@
-// packages/sovereign-node/src/engine.ts
 import * as fs from "node:fs";
 import { ClassicLevel } from "classic-level";
 
-// REQUIRED: Explicit .js extensions for NodeNext resolution
+// NodeNext requires .js extensions for relative imports in code
 import { hash, canonicalize, verifySignature, signablePayload } from "./lib.js";
 import { PadiError } from "./errors.js";
 import type { Block, Payload } from "./types.js";
 
-// REQUIRED: Workspace dependencies
+// Workspace dependencies (Ensure these packages are built first)
 import type { SchemaRegistry } from "@samuelmuriithi/schemas";
 
 const DATA_DIR = process.env.DATA_DIR ?? "./data";
@@ -80,9 +79,5 @@ export class PadiEngine {
                 try { await this.db.get(`b:${h}`); return true; } catch { return false; }
             }
         };
-    }
-
-    async close(): Promise<void> {
-        if (this.db) await this.db.close();
     }
 }
