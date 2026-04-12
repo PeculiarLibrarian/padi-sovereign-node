@@ -1,10 +1,14 @@
 // packages/sovereign-node/src/engine.ts
 
-import fs from "node:fs";
+import * as fs from "node:fs"; // Fix for TS1192: Use namespace import
 import { ClassicLevel } from "classic-level";
-import { hash, canonicalize, verifySignature, signablePayload } from "./lib.js";
-import { PadiError } from "./errors.js";
-import type { Block, Payload } from "./types.js";
+
+// Fix for TS2307: Remove .js extensions for local TS files
+import { hash, canonicalize, verifySignature, signablePayload } from "./lib";
+import { PadiError } from "./errors";
+import type { Block, Payload } from "./types";
+
+// These will work if the package.json names match exactly
 import type { SchemaRegistry } from "@samuelmuriithi/schemas";
 import type { ClusterManager } from "@samuelmuriithi/cluster";
 
@@ -57,7 +61,6 @@ export class PadiEngine {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     this.db = new ClassicLevel(DB_PATH);
 
-    // Bootstrap Efficiency: Use reverse iterator to find current tip instantly
     for await (const [key, value] of this.db.iterator({ gte: "h:", lte: "h:~", reverse: true, limit: 1 })) {
       const h = parseInt(key.slice(2), 10);
       this.currentHeight = h;
@@ -110,7 +113,6 @@ export class PadiEngine {
     try { await this.db.get(K.nonce(nonce)); return true; } catch { return false; }
   }
 
-  // Graceful Shutdown
   async close(): Promise<void> {
     await this.db.close();
   }
