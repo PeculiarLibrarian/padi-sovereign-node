@@ -1,0 +1,37 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix : <http://padi.tech/schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+:StructuralShape a sh:NodeShape ;
+    sh:targetClass :AuthorityNode ;
+    sh:property [ 
+        sh:path :gridScore ; 
+        sh:maxInclusive 1003 ;
+        sh:minInclusive 0 ;
+        sh:minCount 1 ;
+        sh:datatype xsd:integer 
+    ] ;
+    sh:property [ 
+        sh:path :invisibilityCoefficient ; 
+        sh:maxInclusive 1.0 ;
+        sh:minInclusive 0.0 ;
+        sh:minCount 1 ;
+        sh:datatype xsd:decimal
+    ] .
+
+# P-Identity: Hardened Identity Shape
+:IdentityShape a sh:NodeShape ;
+    sh:targetNode :SamuelNode ;
+    sh:property [
+        sh:path :name ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:pattern "^Samuel Muriithi Gitandu$" # Authority Lock
+    ] ;
+    sh:property [
+        sh:path :authorizedPublicKey ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:minLength 128 # Minimum length for a secure PEM header
+    ] .
