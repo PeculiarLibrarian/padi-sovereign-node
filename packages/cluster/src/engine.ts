@@ -2,14 +2,13 @@
 import * as fs from "node:fs";
 import { ClassicLevel } from "classic-level";
 
-// TS2834 Fix: NodeNext requires .js extensions in the import path
+// REQUIRED: Explicit .js extensions for NodeNext resolution
 import { hash, canonicalize, verifySignature, signablePayload } from "./lib.js";
 import { PadiError } from "./errors.js";
 import type { Block, Payload } from "./types.js";
 
-// TS2307 Fix: If the workspace link is failing, we use relative paths temporarily 
-// or ensure pnpm install was run at the root.
-import type { SchemaRegistry } from "../../schemas/src/index.js"; 
+// REQUIRED: Workspace dependencies
+import type { SchemaRegistry } from "@samuelmuriithi/schemas";
 
 const DATA_DIR = process.env.DATA_DIR ?? "./data";
 const DB_PATH = `${DATA_DIR}/index`;
@@ -81,5 +80,9 @@ export class PadiEngine {
                 try { await this.db.get(`b:${h}`); return true; } catch { return false; }
             }
         };
+    }
+
+    async close(): Promise<void> {
+        if (this.db) await this.db.close();
     }
 }
