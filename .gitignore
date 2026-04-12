@@ -1,5 +1,40 @@
-node_modules/
+# ⚓ NAIROBI BUREAU: SOVEREIGN IDENTITY & PERSISTENCE
+# Never commit the private keys or the actual ledger state
 padi_private.pem
+padi_public.pem
+keys/
 data/
-*.tmp
+*.pem
+
+# 🧠 PADI CATALOGUE & SYSTEM SECRETS
+# Local environment overrides and sensitive configurations
 .env
+.env.*
+!.env.example
+.padi-vault/
+
+# 📦 DEPENDENCY MANAGEMENT (PNPM)
+# Managed via pnpm-workspace.yaml; local modules are ephemeral
+node_modules/
+.pnpm-debug.log*
+
+# 🏗️ BUILD & COMPILATION ARTIFACTS
+# Prevent "Version Drift" by ignoring generated JavaScript
+dist/
+*.tsbuildinfo
+build/
+out/
+
+# 🛠️ SYSTEM & RUNTIME NOISE
+# Prevents LevelDB lock contention and OS-specific metadata leaks
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 🐳 DOCKER
+# Ignore local build context artifacts
+.dockerignore
