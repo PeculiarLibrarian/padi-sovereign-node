@@ -1,7 +1,7 @@
 // packages/sovereign-node/src/cluster.ts
 import Redis from "ioredis";
 import { randomUUID } from "node:crypto";
-import type { PadiEngine } from "./engine.js"; // Fixed Import
+import type { PadiEngine } from "./engine.js"; 
 
 export class ClusterManager {
     private redis: Redis;
@@ -31,6 +31,7 @@ export class ClusterManager {
             this.engine.isLeader = false;
             return;
         }
+
         try {
             const acquired = await this.redis.set(this.leaderKey, this.nodeId, "PX", 5000, "NX");
             if (acquired === "OK") {
