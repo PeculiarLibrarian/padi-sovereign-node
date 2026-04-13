@@ -1,8 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Ajv, { type ValidateFunction } from "ajv";
-import { Parser, Store, DataFactory } from "n3";
+import AjvModule from "ajv";
+import type { ValidateFunction } from "ajv";
+import { Parser, Store, DataFactory, type Quad_Subject } from "n3";
+
+// Ajv v8 ships as a default export — must be accessed via .default in ESM
+const Ajv = AjvModule.default ?? AjvModule;
 
 const { namedNode } = DataFactory;
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -46,18 +50,18 @@ export class ShaclError extends Error {
   }
 }
 
-function getNum(store: Store, node: ReturnType<typeof namedNode>, pred: string): number | undefined {
+function getNum(store: Store, node: Quad_Subject, pred: string): number | undefined {
   const q = store.getQuads(node, sh(pred), null, null)[0];
   return q ? Number(q.object.value) : undefined;
 }
 
-function getStr(store: Store, node: ReturnType<typeof namedNode>, pred: string): string | undefined {
+function getStr(store: Store, node: Quad_Subject, pred: string): string | undefined {
   return store.getQuads(node, sh(pred), null, null)[0]?.object.value;
 }
 
 function checkProperty(
   store: Store,
-  propNode: ReturnType<typeof namedNode>,
+  propNode: Quad_Subject,
   fieldPath: string,
   value: unknown,
   violations: ValidationViolation[]
@@ -95,11 +99,14 @@ function validateShape(
   const props = store.getQuads(shapeNode, sh("property"), null, null);
 
   if (!props.length)
-    return { valid: false, violations: [{ path: "shape", constraint: "exists", value: shapeIri, message: `UNKNOWN_SHACL_SHAPE: ${shapeIri}` }] };
+    return {
+      valid: false,
+      violations: [{ path: "shape", constraint: "exists", value: shapeIri, message: `UNKNOWN_SHACL_SHAPE: ${shapeIri}` }]
+    };
 
   for (const pq of props) {
     const propNode = namedNode(pq.object.value);
-    const pathQ = store.getQuads(propNode, sh("path"), null, null)[0];
+    const pathQ    = store.getQuads(propNode, sh("path"), null, null)[0];
     if (!pathQ) continue;
 
     const fieldPath = pathQ.object.value.split(/[#/]/).pop() ?? "";
@@ -107,7 +114,7 @@ function validateShape(
     const value     = record[fieldPath];
 
     const minCount = getNum(store, propNode, "minCount");
-    if (minCount && minCount > 0 && value === undefined) {
+    if (minCount !== undefined && minCount > 0 && value === undefined) {
       violations.push({ path: fieldPath, constraint: "minCount", value: undefined, message: `${msg}: "${fieldPath}" is required` });
       continue;
     }
@@ -133,15 +140,19 @@ export function loadRegistry(): SchemaRegistry {
   if (!fs.existsSync(ttlPath))    throw new Error(`REGISTRY_ERR: padi.ttl not found at ${ttlPath}`);
 
   const ajv = new Ajv({ allErrors: true, strict: true });
-  const validator: ValidateFunction = ajv.compile(JSON.parse(fs.readFileSync(schemaPath, "utf8")));
+  const validator: ValidateFunction = ajv.compile(
+    JSON.parse(fs.readFileSync(schemaPath, "utf8"))
+  );
 
-  const store = new Store();
-  new Parser().parse(fs.readFileSync(ttlPath, "utf8")).forEach(q => store.addQuad(q));
+  const store  = new Store();
+  const parser = new Parser();
+  const quads  = parser.parse(fs.readFileSync(ttlPath, "utf8"));
+  store.addQuads(quads);
 
   const authorizedPublicKeys = store
     .getQuads(null, pad("authorizedPublicKey"), null, null)
-    .map(q => q.object.value.trim())
-    .filter(v => v.startsWith("-----BEGIN"));
+    .map((q: { object: { value: string } }) => q.object.value.trim())
+    .filter((v: string) => v.startsWith("-----BEGIN"));
 
   if (!authorizedPublicKeys.length)
     throw new Error("REGISTRY_ERR: No :authorizedPublicKey data triples found in padi.ttl");
@@ -166,14 +177,20 @@ export function loadRegistry(): SchemaRegistry {
     const context = payload["context"];
 
     if (!context || typeof context !== "string") {
-      const v: ValidationViolation = { path: "context", constraint: "minCount", value: context, message: "MISSING_CONTEXT: payload.context is required" };
+      const v: ValidationViolation = {
+        path: "context", constraint: "minCount", value: context,
+        message: "MISSING_CONTEXT: payload.context is required"
+      };
       if (strict) throw new ShaclError(v);
       return { valid: false, violations: [v] };
     }
 
     const shapeIri = contextRegistry.get(context);
     if (!shapeIri) {
-      const v: ValidationViolation = { path: "context", constraint: "registry", value: context, message: `UNKNOWN_CONTEXT: "${context}" not in :ContextRegistry` };
+      const v: ValidationViolation = {
+        path: "context", constraint: "registry", value: context,
+        message: `UNKNOWN_CONTEXT: "${context}" not in :ContextRegistry`
+      };
       if (strict) throw new ShaclError(v);
       return { valid: false, violations: [v] };
     }
@@ -189,7 +206,9 @@ export function loadRegistry(): SchemaRegistry {
     if (nameQ) record["name"] = nameQ.object.value;
     const keyQs = store.getQuads(pad("SamuelNode"), pad("authorizedPublicKey"), null, null);
     if (keyQs.length === 1) record["authorizedPublicKey"] = keyQs[0].object.value.trim();
-    else if (keyQs.length > 1) record["authorizedPublicKey"] = keyQs.map(q => q.object.value.trim());
+    else if (keyQs.length > 1) record["authorizedPublicKey"] = keyQs.map(
+      (q: { object: { value: string } }) => q.object.value.trim()
+    );
     return validateShape(store, `${NS.padi}IdentityShape`, record);
   }
 
