@@ -2,9 +2,16 @@
   "name": "@samuelmuriithi/cluster",
   "version": "1.0.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "dependencies": {
     "@samuelmuriithi/schemas": "workspace:*",
-    "undici": "^6.21.1",
-    "ioredis": "^5.4.1"
+    "undici": "^6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
   }
 }
