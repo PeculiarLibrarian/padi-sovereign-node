@@ -1,12 +1,11 @@
-// packages/schemas/src/index.ts
 import { createHash } from 'node:crypto';
 
-// Fixes TS2305 in sovereign-node/src/engine.ts
 export interface SchemaRegistry {
-    [key: string]: any;
+    authorizedPublicKeys: string[];
+    validate(payload: any): boolean;
+    validateSHACL(data: Record<string, unknown>): void;
 }
 
-// Fixes TS2307 in cluster/src/replicator.ts
 export interface Block {
     hash: string;
     s: string;    // signature
@@ -14,12 +13,14 @@ export interface Block {
     p: string[];  // parents
     d: any;       // data
     e?: number;   // epoch
+    t?: number;   // timestamp
 }
 
 export const canonicalize = (obj: any): string => JSON.stringify(obj, Object.keys(obj).sort());
 export const hash = (data: string): string => createHash('sha256').update(data).digest('hex');
 export const signablePayload = (data: any): string => canonicalize(data);
+
 export const verifySignature = (payload: string, sig: string, keys: string[]): boolean => {
-    // Basic verification placeholder to allow build to pass
+    // Placeholder for cryptographic verification logic
     return sig.length > 0 && keys.length > 0;
 };
