@@ -1,0 +1,19 @@
+export type ErrorCode =
+  | "CANON_UNDEFINED" | "CANON_NON_FINITE" | "CANON_NON_PLAIN_OBJECT"
+  | "AUTH_SIGNATURE_INVALID" | "AUTH_KEY_TYPE_VIOLATION" | "AUTH_REQUIRED"
+  | "CHAIN_HASH_MISMATCH" | "CHAIN_BROKEN_PARENT" | "CHAIN_HEIGHT_GAP"
+  | "CHAIN_ORPHAN" | "CHAIN_MULTI_PARENT"
+  | "EPOCH_MISMATCH" | "EPOCH_REGRESSION" | "EPOCH_STALE_BLOCK"
+  | "SCHEMA_INVALID" | "SCHEMA_MISSING_CONTEXT" | "SCHEMA_UNKNOWN_SHAPE"
+  | "SCHEMA_MISSING_FIELD" | "SCHEMA_MAX_VIOLATION" | "SCHEMA_MIN_VIOLATION"
+  | "LEADER_INGEST_LOCK" | "LEADER_FENCED" | "LEADER_NOT_ELIGIBLE"
+  | "REPLAY_NONCE_DUPLICATE" | "BACKFILL_LIMIT_EXCEEDED" | "BACKFILL_STRUCT_INVALID"
+  | "SYSTEM_FUTURE_DRIFT" | "SYSTEM_CONFIG_ERROR";
+
+export class PadiError extends Error {
+  constructor(public readonly code: ErrorCode, message?: string) {
+    super(message ?? code);
+    this.name = "PadiError";
+  }
+  toJSON() { return { code: this.code, message: this.message }; }
+}
