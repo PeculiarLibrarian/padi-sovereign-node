@@ -1,24 +1,15 @@
 {
-  "name": "@samuelmuriithi/padi-monorepo",
+  "name": "padi-sovereign-node",
   "private": true,
-  "version": "1.9.7",
-  "packageManager": "pnpm@9.0.0",
-  "scripts": {
-    "build": "node scripts/build.js",
-    "dev:api": "pnpm --filter api-server start",
-    "setup": "node scripts/setup.js",
-    "test": "pnpm -r test",
-    "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "node scripts/build.js && changeset publish"
-  },
+  "type": "module",
   "devDependencies": {
-    "@changesets/cli": "^2.27.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "eslint": "^9.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "build": "pnpm -r build"
   }
 }
