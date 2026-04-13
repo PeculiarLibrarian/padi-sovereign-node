@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/schemas" },
+    { "path": "./packages/cluster" },
+    { "path": "./packages/sovereign-node" }
+  ]
+}
