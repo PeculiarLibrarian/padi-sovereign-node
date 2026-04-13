@@ -1,5 +1,4 @@
-// packages/sovereign-node/src/index.ts
-export { canonicalize, hash, signablePayload, verifySignature } from "./lib.js";
+export { canonicalize, hash, verifySignature, signablePayload, normalize } from "./lib.js";
 export { PadiEngine } from "./engine.js";
-export { PadiError, httpStatusForError, type ErrorCode } from "./errors.js";
-export type { Block, Payload } from "./types.js";
+export { PadiError, httpStatusForError } from "./errors.js";
+export type { Block, Payload, ReplayResult } from "./types.js";
