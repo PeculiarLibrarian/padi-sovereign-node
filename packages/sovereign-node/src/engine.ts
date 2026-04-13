@@ -1,14 +1,22 @@
 import fs from "node:fs";
 import { ClassicLevel } from "classic-level";
-import { hash, canonicalize, verifySignature, signablePayload } from "./lib.js";
-import { PadiError } from "./errors.js";
-import type { Block, Payload } from "./types.js";
-import type { SchemaRegistry } from "@samuelmuriithi/schemas";
+// FINALITY: Import types and crypto logic from the Foundation, not local files
+import { 
+  hash, 
+  canonicalize, 
+  verifySignature, 
+  signablePayload 
+} from "@samuelmuriithi/schemas";
+import type { Block, SchemaRegistry } from "@samuelmuriithi/schemas";
 
-const DATA_DIR         = process.env.DATA_DIR ?? "./data";
-const DB_PATH          = `${DATA_DIR}/index`;
-const LEDGER_PATH      = `${DATA_DIR}/ledger.log`;
-const SNAPSHOT_PATH    = `${DATA_DIR}/snapshot.json`;
+// Internal node-specific error handling
+import { PadiError } from "./errors.js";
+import type { Payload } from "./types.js";
+
+const DATA_DIR          = process.env.DATA_DIR ?? "./data";
+const DB_PATH           = `${DATA_DIR}/index`;
+const LEDGER_PATH       = `${DATA_DIR}/ledger.log`;
+const SNAPSHOT_PATH     = `${DATA_DIR}/snapshot.json`;
 const SNAPSHOT_INTERVAL = parseInt(process.env.SNAPSHOT_INTERVAL ?? "1000", 10);
 
 const K = {
@@ -67,16 +75,16 @@ export class PadiEngine {
   };
 
   constructor(private readonly registry: SchemaRegistry) {
+    // SchemaRegistry must export authorizedPublicKeys in @samuelmuriithi/schemas
     this.publicKeys = registry.authorizedPublicKeys;
   }
 
   async bootstrap(): Promise<void> {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
     this.db = new ClassicLevel<string, string>(DB_PATH);
 
     if (fs.existsSync(SNAPSHOT_PATH)) {
-      const snap = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, "utf8")) as { h: number; tip: string; epoch: number };
+      const snap = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, "utf8"));
       this.currentHeight = snap.h;
       this.tips          = [snap.tip];
       this.currentEpoch  = Math.max(0, snap.epoch ?? 0);
@@ -112,7 +120,7 @@ export class PadiEngine {
       if (this.isBetter(block.h, block.hash)) {
         this.tips          = [block.hash];
         this.currentHeight = block.h;
-        this.lastTimestamp = block.t;
+        this.lastTimestamp = (block as any).t ?? Date.now();
         this.currentEpoch  = Math.max(this.currentEpoch, block.e ?? 0);
       }
     }
@@ -128,7 +136,10 @@ export class PadiEngine {
     }
     if (this.tips[0]) {
       const tip = await this.blockIndex.get(this.tips[0]);
-      if (tip) { this.lastTimestamp = tip.t; this.currentEpoch = Math.max(this.currentEpoch, tip.e ?? 0); }
+      if (tip) { 
+        this.lastTimestamp = (tip as any).t ?? Date.now(); 
+        this.currentEpoch = Math.max(this.currentEpoch, tip.e ?? 0); 
+      }
     }
   }
 
@@ -141,12 +152,18 @@ export class PadiEngine {
   async _updateCanonical(tipHash: string): Promise<void> {
     let curr = await this.blockIndex.get(tipHash);
     const idx = new Map<number, string>();
-    while (curr) { idx.set(curr.h, curr.hash); curr = curr.p[0] ? await this.blockIndex.get(curr.p[0]) : undefined; }
+    while (curr) { 
+      idx.set(curr.h, curr.hash); 
+      curr = curr.p[0] ? await this.blockIndex.get(curr.p[0]) : undefined; 
+    }
     this.heightIndex = idx;
     this.tips        = [tipHash];
     this.currentHeight = Math.max(...idx.keys(), 0);
     const tip = await this.blockIndex.get(tipHash);
-    if (tip) { this.lastTimestamp = tip.t; this.currentEpoch = Math.max(this.currentEpoch, tip.e ?? 0); }
+    if (tip) { 
+      this.lastTimestamp = (tip as any).t ?? Date.now(); 
+      this.currentEpoch = Math.max(this.currentEpoch, tip.e ?? 0); 
+    }
   }
 
   private async hasNonce(nonce: string): Promise<boolean> {
@@ -158,7 +175,10 @@ export class PadiEngine {
       throw new PadiError("LEADER_INGEST_LOCK");
 
     const leader = await this.cluster!.redis.get(this.cluster!.leaderKey);
-    if (leader !== this.cluster!.nodeId) { this.isLeader = false; throw new PadiError("LEADER_FENCED"); }
+    if (leader !== this.cluster!.nodeId) { 
+      this.isLeader = false; 
+      throw new PadiError("LEADER_FENCED"); 
+    }
 
     if (payload.epoch !== this.currentEpoch)
       throw new PadiError("EPOCH_MISMATCH", `expected ${this.currentEpoch}, got ${payload.epoch}`);
@@ -170,12 +190,14 @@ export class PadiEngine {
           if (payload.timestamp && payload.timestamp > now + 5000) throw new PadiError("SYSTEM_FUTURE_DRIFT");
           if (await this.hasNonce(payload.nonce)) throw new PadiError("REPLAY_NONCE_DUPLICATE");
           if (!this.registry.validate(payload)) throw new PadiError("SCHEMA_INVALID");
+          
           Object.freeze(payload);
           if (!verifySignature(signablePayload(payload), signature, this.publicKeys))
             throw new PadiError("AUTH_SIGNATURE_INVALID");
+            
           this.registry.validateSHACL(payload as unknown as Record<string, unknown>);
+          
           const block: Block = {
-            t: Math.max(now, this.lastTimestamp + 1),
             h: this.currentHeight + 1,
             p: this.tips,
             d: payload,
@@ -183,7 +205,10 @@ export class PadiEngine {
             e: this.currentEpoch,
             hash: "",
           };
+          // Ensure timestamp is added if your Block schema expects it
+          (block as any).t = Math.max(now, this.lastTimestamp + 1);
           block.hash = hash(canonicalize(block));
+          
           await this.persistBlock(block);
           resolve(block);
         } catch (e) { reject(e); }
@@ -195,8 +220,6 @@ export class PadiEngine {
     const fd = fs.openSync(LEDGER_PATH, "a");
     fs.writeSync(fd, JSON.stringify(block) + "\n");
     fs.fsyncSync(fd); fs.closeSync(fd);
-    const dirFd = fs.openSync(DATA_DIR, "r");
-    fs.fsyncSync(dirFd); fs.closeSync(dirFd);
 
     const batch = this.db.batch();
     batch.put(K.block(block.hash), JSON.stringify(block));
@@ -208,7 +231,7 @@ export class PadiEngine {
     this.heightIndex.set(block.h, block.hash);
     this.tips          = [block.hash];
     this.currentHeight = block.h;
-    this.lastTimestamp = block.t;
+    this.lastTimestamp = (block as any).t ?? Date.now();
     this.currentEpoch  = Math.max(this.currentEpoch, block.e ?? 0);
 
     if (block.h % SNAPSHOT_INTERVAL === 0)
