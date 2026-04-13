@@ -1,4 +1,4 @@
-export * from "./engine.js";
-export * from "./lib.js";
-export * from "./types.js";
-export * from "./errors.js";
+export { canonicalize, hash, verifySignature, signablePayload, normalize } from "./lib.js";
+export { PadiEngine } from "./engine.js";
+export { PadiError, httpStatusForError } from "./errors.js";
+export type { Block, Payload, ReplayResult } from "./types.js";
