@@ -1,8 +1,18 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "paths": {
+      "@samuelmuriithi/schemas": ["../schemas/src/index.ts"],
+      "@samuelmuriithi/cluster": ["../cluster/src/index.ts"]
+    }
   },
-  "include": ["src"]
+  "include": ["src/**/*"]
 }
