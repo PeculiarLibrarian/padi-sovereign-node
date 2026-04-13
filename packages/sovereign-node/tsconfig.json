@@ -1,12 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true
   },
   "references": [
     { "path": "../schemas" },
     { "path": "../cluster" }
   ],
-  "include": ["src/**/*"]
+  "include": ["src"]
 }
