@@ -1,30 +1,18 @@
 {
   "name": "@samuelmuriithi/sovereign-node",
-  "version": "1.9.7",
-  "private": true,
+  "version": "1.0.0",
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@samuelmuriithi/schemas": "workspace:*",
     "@samuelmuriithi/cluster": "workspace:*",
-    "classic-level": "^1.4.1",
-    "ioredis": "^5.4.1",
-    "undici": "^6.21.1"
+    "classic-level": "^1.4.1"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.4.0"
   }
 }
