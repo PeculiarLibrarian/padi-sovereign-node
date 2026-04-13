@@ -1,9 +1,5 @@
 {
   "name": "@samuelmuriithi/sovereign-node",
-  "version": "1.9.7",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
