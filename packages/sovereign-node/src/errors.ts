@@ -1,5 +1,3 @@
-// packages/sovereign-node/src/errors.ts
-
 export type ErrorCode =
   | "CANON_UNDEFINED"
   | "CANON_NON_FINITE"
@@ -59,7 +57,7 @@ export function httpStatusForError(code: ErrorCode): number {
     case "EPOCH_MISMATCH":
     case "EPOCH_STALE_BLOCK":
     case "SYSTEM_FUTURE_DRIFT":
-      return 422; // State/Time Conflicts
+      return 422; 
     default:
       return 500;
   }
