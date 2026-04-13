@@ -9,8 +9,6 @@ import {
 import type { Block } from "@samuelmuriithi/schemas";
 import type { MTLSConfig } from "./types.js";
 
-const FETCH_TIMEOUT_MS = 3000;
-
 export interface ReplicatorHandle {
   isLeader: boolean;
   tips: string[];
@@ -47,10 +45,7 @@ export class Replicator {
       const peer = this.peers[Math.floor(Math.random() * this.peers.length)];
       const res = await fetch(`${peer}/ledger/tip`, { dispatcher: this.agent });
       const { tip, h } = await res.json() as { tip: string; h: number };
-      
-      if (this.engine.isBetter(h, tip)) {
-        await this.backfill(peer, tip);
-      }
+      if (this.engine.isBetter(h, tip)) await this.backfill(peer, tip);
     } finally {
       this.syncing = false;
     }
@@ -59,8 +54,6 @@ export class Replicator {
   async backfill(peer: string, tipHash: string): Promise<void> {
     const res = await fetch(`${peer}/ledger/block/${tipHash}`, { dispatcher: this.agent });
     const block = await res.json() as Block;
-    
-    // Logic remains high-integrity because it uses the schemas foundation
     if (hash(canonicalize(block)) !== block.hash) throw new Error("HASH_MISMATCH");
     await this.engine.persistBlock(block);
   }
