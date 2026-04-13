@@ -1,17 +1,12 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
     "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": true,
-    "composite": true,
-    "ignoreDeprecations": "5.0",
-    "paths": {
-      "@samuelmuriithi/schemas": ["../schemas/dist/index.d.ts"],
-      "@samuelmuriithi/cluster": ["../cluster/dist/index.d.ts"]
-    }
+    "rootDir": "./src"
   },
+  "references": [
+    { "path": "../schemas" },
+    { "path": "../cluster" }
+  ],
   "include": ["src/**/*"]
 }
