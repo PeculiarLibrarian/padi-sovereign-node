@@ -1,4 +1,5 @@
-export { canonicalize, hash, verifySignature, signablePayload, normalize } from "./lib.js";
-export { PadiEngine } from "./engine.js";
-export { PadiError, httpStatusForError } from "./errors.js";
-export type { Block, Payload, ReplayResult } from "./types.js";
+// Note: We use .js extension for ESM module resolution consistency
+export { PadiError, httpStatusForError, type ErrorCode } from "./errors.js";
+
+// Add your other exports here once implemented
+// export { PadiEngine } from "./engine.js";
