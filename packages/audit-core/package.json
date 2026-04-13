@@ -1,0 +1,12 @@
+{
+  "name": "@samuelmuriithi/audit-core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc --noEmit" },
+  "dependencies": { "@samuelmuriithi/sovereign-node": "workspace:*" },
+  "devDependencies": { "@types/node": "^20.0.0", "typescript": "^5.5.0" }
+}
