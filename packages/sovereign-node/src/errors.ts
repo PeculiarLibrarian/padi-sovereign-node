@@ -1,3 +1,6 @@
+/**
+ * PADI Structured Error Taxonomy
+ */
 export type ErrorCode = 
   | "AUTH_SIGNATURE_INVALID" 
   | "AUTH_KEY_TYPE_VIOLATION" 
@@ -7,12 +10,18 @@ export type ErrorCode =
   | "SCHEMA_VIOLATION";
 
 export class PadiError extends Error {
-    constructor(public code: ErrorCode, message?: string) {
-        super(message || code);
-        this.name = "PadiError";
-    }
+  constructor(public readonly code: ErrorCode, message?: string) {
+    super(message || code);
+    this.name = "PadiError";
+  }
+
+  // Ensure machine-readable output for API Gateway
+  toJSON() {
+    return { code: this.code, message: this.message };
+  }
 }
 
+/** Map a raw error code to an HTTP status code. */
 export function httpStatusForError(code: ErrorCode): number {
   switch (code) {
     case "AUTH_SIGNATURE_INVALID":
