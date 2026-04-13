@@ -1,72 +1,88 @@
-import { Redis } from "ioredis";
-import { randomUUID } from "node:crypto";
-// Ensure this path matches the name in packages/sovereign-node/package.json
-import type { PadiEngine } from "@samuelmuriithi/sovereign-node"; 
+import Redis from "ioredis";
+import crypto from "node:crypto";
+import type { ClusterConfig } from "./types.js";
+
+export interface EngineHandle {
+  isLeader:     boolean;
+  currentEpoch: number;
+  log(lvl: string, evt: string, meta?: Record<string, unknown>): void;
+}
 
 export class ClusterManager {
-    private redis: Redis;
-    readonly nodeId: string;
-    private leaderKey = "padi:leader";
-    private epochKey = "padi:epoch";
-    private fencingKey = "padi:fence";
-    private pollTimer: NodeJS.Timeout | null = null;
+  readonly redis:     Redis;
+  readonly nodeId:    string;
+  readonly leaderKey = "padi:leader";
+  readonly epochKey  = "padi:epoch";
+  private readonly ttlMs:  number;
+  private readonly pollMs: number;
 
-    constructor(private engine: PadiEngine, config: { redisUrl?: string, nodeId?: string }) {
-        // Use ioredis default constructor, passing TLS explicitly via options
-        this.redis = new Redis(config.redisUrl || "redis://localhost:6379", {
-            tls: config.redisUrl?.startsWith("rediss://") ? {} : undefined,
-            maxRetriesPerRequest: 3
-        });
-        this.nodeId = config.nodeId || randomUUID();
+  constructor(
+    private readonly engine: EngineHandle,
+    private readonly config: ClusterConfig
+  ) {
+    this.nodeId  = config.nodeId;
+    this.ttlMs   = config.leaderTtlMs;
+    this.pollMs  = config.pollIntervalMs;
+
+    const protocol = new URL(config.redisUrl).protocol;
+    if (protocol !== "rediss:" && process.env.NODE_ENV === "production") {
+      throw new Error(`REDIS_TLS_REQUIRED: use rediss:// in production (got ${protocol})`);
     }
 
-    async start(): Promise<void> {
-        // G-Ops: Recursive timeout to prevent interval overlap
-        const runPoll = async () => {
-            await this.poll();
-            this.pollTimer = setTimeout(runPoll, 1500);
-        };
-        await runPoll();
-    }
+    this.redis = new Redis(config.redisUrl, {
+      tls: protocol === "rediss:" ? {} : undefined,
+      enableReadyCheck: true,
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => Math.min(times * 100, 3000),
+    });
 
-    async poll(): Promise<void> {
-        if (process.env.LEADER_ELIGIBLE !== "true") {
-            this.engine.isLeader = false;
-            return;
+    this.redis.on("error", (e: Error) =>
+      engine.log("ERROR", "REDIS_ERROR", { msg: e.message })
+    );
+  }
+
+  async start(): Promise<void> {
+    const redisEpoch = parseInt((await this.redis.get(this.epochKey)) ?? "0", 10);
+    if (this.engine.currentEpoch > redisEpoch) {
+      await this.redis.set(this.epochKey, this.engine.currentEpoch);
+      this.engine.log("INFO", "EPOCH_SEEDED_FROM_SNAPSHOT", { epoch: this.engine.currentEpoch });
+    }
+    await this.poll();
+    setInterval(() => this.poll(), this.pollMs);
+  }
+
+  async poll(): Promise<void> {
+    if (process.env.LEADER_ELIGIBLE !== "true") {
+      this.engine.isLeader = false;
+      return;
+    }
+    try {
+      const acquired = await this.redis.set(this.leaderKey, this.nodeId, "PX", this.ttlMs, "NX");
+      if (acquired === "OK") {
+        const newEpoch = await this.redis.incr(this.epochKey);
+        this.engine.currentEpoch = Math.max(this.engine.currentEpoch, newEpoch);
+        this.engine.isLeader = true;
+        this.engine.log("INFO", "LEADER_ELECTED", { epoch: this.engine.currentEpoch });
+      } else {
+        const leader = await this.redis.get(this.leaderKey);
+        if (leader === this.nodeId) {
+          await this.redis.pexpire(this.leaderKey, this.ttlMs);
+          this.engine.isLeader = true;
+        } else {
+          this.engine.isLeader = false;
+          const epoch = parseInt((await this.redis.get(this.epochKey)) ?? "0", 10);
+          this.engine.currentEpoch = Math.max(this.engine.currentEpoch, epoch);
         }
-        try {
-            // NX = Only set if not exists | PX = Milliseconds
-            const acquired = await this.redis.set(this.leaderKey, this.nodeId, "PX", 5000, "NX");
-            
-            if (acquired === "OK") {
-                const newEpoch = await this.redis.incr(this.epochKey);
-                await this.redis.set(this.fencingKey, newEpoch.toString());
-                this.engine.currentEpoch = newEpoch;
-                this.engine.isLeader = true;
-                this.engine.log("INFO", "LEADER_ACQUIRED", { epoch: newEpoch });
-            } else {
-                const leader = await this.redis.get(this.leaderKey);
-                this.engine.isLeader = (leader === this.nodeId);
-                
-                // Keep epoch in sync even if not leader
-                const remoteEpoch = await this.redis.get(this.epochKey);
-                if (remoteEpoch) {
-                    this.engine.currentEpoch = Math.max(this.engine.currentEpoch, parseInt(remoteEpoch, 10));
-                }
-            }
-        } catch (err) {
-            this.engine.isLeader = false;
-            this.engine.log("ERROR", "CLUSTER_POLL_FAILED", { msg: (err as Error).message });
-        }
+      }
+    } catch (e) {
+      this.engine.isLeader = false;
+      this.engine.log("WARN", "REDIS_POLL_FAIL", { msg: (e as Error).message });
     }
+  }
 
-    async release(): Promise<void> {
-        if (this.pollTimer) clearTimeout(this.pollTimer);
-        // Only release if we own it
-        const currentLeader = await this.redis.get(this.leaderKey);
-        if (currentLeader === this.nodeId) {
-            await this.redis.del(this.leaderKey);
-        }
-        await this.redis.quit();
+  async release(): Promise<void> {
+    if ((await this.redis.get(this.leaderKey)) === this.nodeId) {
+      await this.redis.del(this.leaderKey);
     }
+  }
 }
