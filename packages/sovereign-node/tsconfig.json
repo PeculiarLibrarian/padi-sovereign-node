@@ -3,10 +3,18 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./src",
     "baseUrl": ".",
+    "declaration": true,
+    "sourceMap": true,
+    "strict": true,
+    "skipLibCheck": true,
     "paths": {
       "@samuelmuriithi/schemas": ["../schemas/src/index.ts"],
-      "@samuelmuriithi/cluster": ["../cluster/src/index.ts"]
+      "@samuelmuriithi/cluster": ["../cluster/src/index.ts"],
+      "./*.js": ["./src/*.ts"]
     }
-  }
+  },
+  "include": ["src/**/*"]
 }
