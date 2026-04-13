@@ -3,10 +3,10 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"],
-    "paths": {
-      "@samuelmuriithi/schemas": ["../schemas/dist/index.d.ts"]
-    }
+    "composite": true
   },
+  "references": [
+    { "path": "../schemas" }
+  ],
   "include": ["src"]
 }
