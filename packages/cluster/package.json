@@ -5,11 +5,23 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
-  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc --noEmit" },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types":  "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build":     "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@samuelmuriithi/sovereign-node": "workspace:*",
-    "ioredis": "^5.3.2"
+    "ioredis": "^5.3.2",
+    "undici":  "^6.0.0"
   },
-  "devDependencies": { "@types/node": "^20.0.0", "typescript": "^5.5.0" }
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript":  "^5.5.0"
+  }
 }
