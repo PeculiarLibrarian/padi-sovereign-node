@@ -7,7 +7,7 @@
     "rootDir": "./src",
     "declaration": true,
     "composite": true,
-    "baseUrl": ".",
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@samuelmuriithi/schemas": ["../schemas/dist/index.d.ts"],
       "@samuelmuriithi/cluster": ["../cluster/dist/index.d.ts"]
