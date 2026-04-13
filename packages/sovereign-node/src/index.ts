@@ -1,5 +1,5 @@
-// Note: We use .js extension for ESM module resolution consistency
+// packages/sovereign-node/src/index.ts
+export { canonicalize, hash, signablePayload, verifySignature } from "./lib.js";
+export { PadiEngine } from "./engine.js";
 export { PadiError, httpStatusForError, type ErrorCode } from "./errors.js";
-
-// Add your other exports here once implemented
-// export { PadiEngine } from "./engine.js";
+export type { Block, Payload } from "./types.js";
