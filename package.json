@@ -2,14 +2,7 @@
   "name": "padi-sovereign-node",
   "private": true,
   "type": "module",
-  "devDependencies": {
-    "typescript": "^5.0.0"
-  },
   "workspaces": [
     "packages/*"
-  ],
-  "scripts": {
-    "setup": "node scripts/setup.js",
-    "build": "pnpm -r build"
-  }
+  ]
 }
