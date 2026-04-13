@@ -3,7 +3,7 @@
   "version": "1.9.7",
   "private": true,
   "type": "module",
-  "main":  "./dist/index.js",
+  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -11,13 +11,13 @@
       "types":  "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
   "scripts": {
     "build":     "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test":      "node --test dist/lib.test.js"
   },
   "dependencies": {
+    "@samuelmuriithi/schemas": "workspace:*",
     "classic-level": "^1.4.0",
     "lru-cache":     "^10.0.0"
   },
