@@ -16,7 +16,7 @@ export class PadiEngine {
     public currentHeight = 0;
     public currentEpoch = 0;
     public isLeader = false;
-    private mutex = Promise.resolve();
+    public mutex: Promise<unknown> = Promise.resolve();
     private readonly publicKeys: string[];
 
     constructor(private readonly registry: SchemaRegistry) {
