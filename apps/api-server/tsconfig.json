@@ -1,8 +1,24 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
+  "name": "api-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build":     "tsc -p tsconfig.json",
+    "start":     "node dist/server.js",
+    "typecheck": "tsc --noEmit"
   },
-  "include": ["src"]
+  "dependencies": {
+    "@samuelmuriithi/sovereign-node": "workspace:*",
+    "@samuelmuriithi/cluster":        "workspace:*",
+    "@samuelmuriithi/schemas":        "workspace:*",
+    "express":            "^4.18.2",
+    "express-rate-limit": "^7.0.0",
+    "helmet":             "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node":    "^20.0.0",
+    "typescript":     "^5.5.0"
+  }
 }
