@@ -1,46 +1,38 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-// Fix 1: Use the workspace-linked package
-import { canonicalize, hash } from '@samuelmuriithi/sovereign-node';
+import { fileURLToPath } from 'node:url';
 
-const KEYS_DIR = './keys';
-const DATA_DIR = './data';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.join(__dirname, '..');
 
-// Fix 2: Create secure directories
-[KEYS_DIR, DATA_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+// Ensure data directories exist for the node
+const DATA_DIR = path.join(ROOT, 'data/index');
 
-console.log("🏛️  Initializing Nairobi Bureau Identity...");
+async function setup() {
+    console.log("🏗️ Initializing Sovereign Node Environment...");
 
-// Generate Ed25519 Pair
-const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
-    publicKeyEncoding: { type: 'spki', format: 'pem' },
-    privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
-});
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        console.log(`✅ Created local database path: ${DATA_DIR}`);
+    }
 
-// Save Keys
-fs.writeFileSync(path.join(KEYS_DIR, 'padi_private.pem'), privateKey);
-fs.writeFileSync(path.join(KEYS_DIR, 'padi_public.pem'), publicKey);
+    // Verify local package structure
+    const packagesDir = path.join(ROOT, 'packages');
+    const packages = fs.readdirSync(packagesDir);
 
-// Fix 4: Reconcile Genesis with PDIM-1 Standard
-const genesis = { 
-    h: 0, 
-    p: [], 
-    e: 0, 
-    d: { system: "PADI_GENESIS", version: "1.9.7c" },
-    n: crypto.randomBytes(8).toString('hex') // Nonce for uniqueness
-};
+    console.log(`📦 Found ${packages.length} workspaces. Validating links...`);
+    
+    // Logic to verify package.json exists in each workspace
+    packages.forEach(pkg => {
+        const pjsonPath = path.join(packagesDir, pkg, 'package.json');
+        if (fs.existsSync(pjsonPath)) {
+            console.log(`  - ${pkg}: Valid`);
+        } else {
+            console.error(`  - ${pkg}: MISSING package.json!`);
+        }
+    });
 
-// Calculate initial hash
-genesis.hash = hash(canonicalize(genesis));
+    console.log("\n🚀 Setup complete. Run 'pnpm install' to link workspaces.");
+}
 
-// Fix 3: Initialize the Ledger Log in the Bureau's data path
-fs.writeFileSync(path.join(DATA_DIR, 'ledger.log'), JSON.stringify(genesis) + '\n');
-
-console.log(chalk.green("\n✅ BUREAU IDENTITY FINALIZED"));
-console.log(`   Node Identity: :SamuelNode`);
-console.log(`   Genesis Hash:  ${genesis.hash}`);
-console.log(`   Public Key:    ${path.join(KEYS_DIR, 'padi_public.pem')}`);
-console.log(chalk.yellow("\n⚠️  ACTION REQUIRED: Add '/keys' to your .gitignore immediately.\n"));
+setup().catch(console.error);
