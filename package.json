@@ -2,7 +2,26 @@
   "name": "padi-sovereign-node",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ]
+
+  "packageManager": "pnpm@9.0.0",
+
+  "engines": {
+    "node": ">=20.11.0"
+  },
+
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+
+    "test:canonical": "turbo run test --filter=@padi/canonical",
+    "test:reducer": "turbo run test --filter=@padi/reducer",
+    "test:replay": "turbo run test --filter=apps/node"
+  },
+
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  }
 }
